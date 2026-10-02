@@ -286,3 +286,18 @@ if (PARLAY_EXAMPLE_DATA)
 else()
   message(STATUS "example data: Off (add -DPARLAY_EXAMPLE_DATA=On to download)")
 endif()
+
+# --------------------------------------------------- #
+# Looking at scheduler joins
+
+add_executable(delaunay_test
+    sandbox/delaunay_scheduler_testing.cpp
+)
+
+target_link_libraries(delaunay_test PRIVATE 
+    parlay
+)
+
+target_compile_definitions(delaunay_test PRIVATE
+    PARLAY_TRACE_STATES=true
+)

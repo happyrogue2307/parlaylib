@@ -27,7 +27,7 @@ struct Deque {
   // use std::atomic<age_t> for atomic access.
   // Note: Explicit alignment specifier required
   // to ensure that Clang inlines atomic loads.
-  struct alignas(int64_t) age_t {
+  struct alignas(int64_t) age_t { // What is age_t?
     // cppcheck bug prevents it from seeing usage with braced initializer
     tag_t tag;                // cppcheck-suppress unusedStructMember
     qidx top;                 // cppcheck-suppress unusedStructMember

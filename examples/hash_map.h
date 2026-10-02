@@ -23,7 +23,7 @@
 template <typename K,
 	  typename V,
 	  typename Hash = parlay::hash<K>,
-	  typename Equal = std::equal_to<>>
+	  typename Equal = std::equal_to<> >
 struct hash_map {
  private:
   using KV = std::pair<K,V>;

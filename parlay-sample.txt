@@ -1,0 +1,133 @@
+Analysis of sampling simple_par_prog (pid 38241) every 1 millisecond
+Process:         simple_par_prog [38241]
+Path:            /Users/USER/Documents/*/simple_par_prog
+Load Address:    0x100740000
+Identifier:      simple_par_prog
+Version:         ???
+Code Type:       ARM64
+Parent Process:  zsh [25338]
+Target Type:     live task
+
+Date/Time:       2026-09-18 16:59:36.811 -0400
+Launch Time:     2026-09-18 16:59:36.729 -0400
+OS Version:      macOS 15.6.1 (24G90)
+Report Version:  7
+Analysis Tool:   /usr/bin/sample
+----
+
+Call graph:
+    189 Thread_5187129: Main Thread
+    + 182 _dyld_start  (in dyld) + 0  [0x1008247c0]
+    + 5 start  (in dyld) + 6000  [0x1940e2b4c]
+    + ! 5 dyld4::start(dyld4::KernelArgs*, void*, void*)::$_0::operator()() const  (in dyld) + 236  [0x1940e31d8]
+    + !   5 dyld4::prepare(dyld4::APIs&, mach_o::Header const*)  (in dyld) + 2976  [0x1940e3d8c]
+    + !     5 dyld4::RuntimeState::notifyDebuggerLoad(std::span<dyld4::Loader const*, 18446744073709551615ul> const&)  (in dyld) + 432  [0x1940f1fd0]
+    + !       5 dyld4::ExternallyViewableState::addImages(lsl::Allocator&, lsl::Allocator&, std::span<dyld4::ExternallyViewableState::ImageInfo, 18446744073709551615ul> const&)  (in dyld) + 544  [0x1941289c0]
+    + !         5 dyld4::ExternallyViewableState::triggerNotifications(dyld_image_mode, unsigned int, dyld_image_info const*)  (in dyld) + 264  [0x1941285b0]
+    + !           5 dyld4::RemoteNotificationResponder::blockOnSynchronousEvent(unsigned int)  (in dyld) + 48  [0x1941129a8]
+    + !             5 dyld4::RemoteNotificationResponder::sendMessage(int, unsigned int, mach_msg_header_t*)  (in dyld) + 220  [0x19411261c]
+    + !               5 mach_msg_overwrite  (in dyld) + 244  [0x19416053c]
+    + !                 5 mach_msg2_internal  (in dyld) + 76  [0x194160390]
+    + !                   5 mach_msg2_trap  (in dyld) + 8  [0x1940dd72c]
+    + 1 start  (in dyld) + 5108  [0x1008267d0]
+    + ! 1 dyld4::ExternallyViewableState::createMinimalInfo(lsl::Allocator&, unsigned long long, char const*, unsigned long long, char const*, DyldSharedCache const*)  (in dyld) + 1672  [0x10086bddc]
+    + !   1 dyld4::ExternallyViewableState::triggerNotifications(dyld_image_mode, unsigned int, dyld_image_info const*)  (in dyld) + 264  [0x10086c5b0]
+    + !     1 dyld4::RemoteNotificationResponder::blockOnSynchronousEvent(unsigned int)  (in dyld) + 48  [0x1008569a8]
+    + !       1 dyld4::RemoteNotificationResponder::sendMessage(int, unsigned int, mach_msg_header_t*)  (in dyld) + 220  [0x10085661c]
+    + !         1 mach_msg_overwrite  (in dyld) + 244  [0x1008a453c]
+    + !           1 mach_msg2_internal  (in dyld) + 76  [0x1008a4390]
+    + !             1 mach_msg2_trap  (in dyld) + 8  [0x10082172c]
+    + 1 start  (in dyld) + 3320  [0x1940e20d4]
+    +   1 dyld4::ExternallyViewableState::createMinimalInfo(lsl::Allocator&, unsigned long long, char const*, unsigned long long, char const*, DyldSharedCache const*)  (in dyld) + 1672  [0x194127ddc]
+    +     1 dyld4::ExternallyViewableState::triggerNotifications(dyld_image_mode, unsigned int, dyld_image_info const*)  (in dyld) + 264  [0x1941285b0]
+    +       1 dyld4::RemoteNotificationResponder::blockOnSynchronousEvent(unsigned int)  (in dyld) + 48  [0x1941129a8]
+    +         1 dyld4::RemoteNotificationResponder::sendMessage(int, unsigned int, mach_msg_header_t*)  (in dyld) + 220  [0x19411261c]
+    +           1 mach_msg_overwrite  (in dyld) + 244  [0x19416053c]
+    +             1 mach_msg2_internal  (in dyld) + 76  [0x194160390]
+    +               1 mach_msg2_trap  (in dyld) + 8  [0x1940dd72c]
+    1689 Thread_5187129   DispatchQueue_1: com.apple.main-thread  (serial)
+    + 1689 start  (in dyld) + 6076  [0x1940e2b98]
+    +   1689 main  (in simple_par_prog) + 80  [0x1007424c4]  /Users/atharvsharma/Documents/parlaylib/sandbox/scheduler_joins.cpp:38
+    +     1689 parlay::par_do<main::$_0&, main::$_1&>(main::$_0&, main::$_1&, bool)  (in simple_par_prog) + 56  [0x100742540]  /Users/atharvsharma/Documents/parlaylib/include/parlay/parallel.h:211
+    +       1689 parlay::fork_join_scheduler::pardo<main::$_0&, main::$_1&>(parlay::scheduler<parlay::WorkStealingJob>&, main::$_0&, main::$_1&, bool)  (in simple_par_prog) + 228  [0x1007426c4]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:345
+    +         1689 parlay::fork_join_scheduler::pardo<main::$_0&, main::$_1&>(parlay::scheduler<parlay::WorkStealingJob>&, main::$_0&, main::$_1&, bool)::'lambda'()::operator()() const  (in simple_par_prog) + 28  [0x100742930]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:339
+    +           1688 main::$_1::operator()() const  (in simple_par_prog) + 44,24,...  [0x100742ce4,0x100742cd0,...]  /Users/atharvsharma/Documents/parlaylib/sandbox/scheduler_joins.cpp:33
+    +           1 main::$_1::operator()() const  (in simple_par_prog) + 72  [0x100742d00]  /Users/atharvsharma/Documents/parlaylib/sandbox/scheduler_joins.cpp:34
+    1689 Thread_5187180
+    + 1689 thread_start  (in libsystem_pthread.dylib) + 8  [0x19447eb80]
+    +   1689 _pthread_start  (in libsystem_pthread.dylib) + 136  [0x194483c0c]
+    +     1689 std::__thread_proxy[abi:v15006]<std::tuple<std::unique_ptr<std::__thread_struct>, parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()>>(void*)  (in simple_par_prog) + 84  [0x100747388]  /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk/usr/include/c++/v1/thread:301
+    +       1689 std::__thread_execute[abi:v15006]<std::unique_ptr<std::__thread_struct>, parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()>(std::tuple<std::unique_ptr<std::__thread_struct>, parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()>&, std::__tuple_indices<>)  (in simple_par_prog) + 28  [0x1007479e0]  /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk/usr/include/c++/v1/thread:290
+    +         1689 decltype(std::declval<parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()>()()) std::__invoke[abi:v15006]<parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()>(parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()&&)  (in simple_par_prog) + 24  [0x100747a44]  /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk/usr/include/c++/v1/__functional/invoke.h:394
+    +           1689 parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()::operator()() const  (in simple_par_prog) + 68  [0x100747abc]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:121
+    +             1685 parlay::scheduler<parlay::WorkStealingJob>::worker()  (in simple_par_prog) + 132  [0x100747b4c]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:206
+    +             ! 1685 parlay::scheduler<parlay::WorkStealingJob>::wait_for_work()  (in simple_par_prog) + 80  [0x100747bfc]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:299
+    +             !   1685 parlay::atomic_wait<unsigned long>(std::atomic<unsigned long> const*, parlay::type_identity<unsigned long>::type)  (in simple_par_prog) + 36  [0x100747d50]  /Users/atharvsharma/Documents/parlaylib/include/parlay/internal/atomic_wait.h:371
+    +             !     1685 void __cxx_atomic_wait<unsigned long>(unsigned long const*, unsigned long, int)  (in simple_par_prog) + 528  [0x100748058]  /Users/atharvsharma/Documents/parlaylib/include/parlay/internal/atomic_wait.h:351
+    +             !       1685 void __cxx_atomic_try_wait_slow<unsigned long>(unsigned long const volatile*, unsigned long, int)  (in simple_par_prog) + 228  [0x10074814c]  /Users/atharvsharma/Documents/parlaylib/include/parlay/internal/atomic_wait.h:251
+    +             !         1685 _pthread_cond_wait  (in libsystem_pthread.dylib) + 984  [0x1944840e0]
+    +             !           1685 __psynch_cvwait  (in libsystem_kernel.dylib) + 8  [0x1944453cc]
+    +             4 parlay::scheduler<parlay::WorkStealingJob>::worker()  (in simple_par_prog) + 72  [0x100747b10]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:200
+    +               4 parlay::scheduler<parlay::WorkStealingJob>::get_job<parlay::scheduler<parlay::WorkStealingJob>::worker()::'lambda'()>(parlay::scheduler<parlay::WorkStealingJob>::worker()::'lambda'()&&, bool)  (in simple_par_prog) + 128  [0x100747cd4]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:241
+    +                 2 parlay::scheduler<parlay::WorkStealingJob>::steal_job<parlay::scheduler<parlay::WorkStealingJob>::worker()::'lambda'()>(parlay::scheduler<parlay::WorkStealingJob>::worker()::'lambda'()&&, bool)  (in simple_par_prog) + 112  [0x1007482b0]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:257
+    +                 : 2 parlay::scheduler<parlay::WorkStealingJob>::worker()::'lambda'()::operator()() const  (in simple_par_prog) + 28  [0x100748230]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:200
+    +                 :   2 parlay::scheduler<parlay::WorkStealingJob>::finished() const  (in simple_par_prog) + 32  [0x100747c3c]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:171
+    +                 :     1 std::__atomic_base<int, false>::load[abi:v15006](std::memory_order) const  (in simple_par_prog) + 32  [0x100748188]  /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk/usr/include/c++/v1/atomic:1560
+    +                 :     | 1 std::__cxx_atomic_load[abi:v15006]<int>(std::__cxx_atomic_base_impl<int> const*, std::memory_order)  (in simple_par_prog) + 24  [0x1007481ac]  /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk/usr/include/c++/v1/atomic:958
+    +                 :     1 std::__atomic_base<int, false>::load[abi:v15006](std::memory_order) const  (in simple_par_prog) + 16  [0x100748178]  /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk/usr/include/c++/v1/atomic:1560
+    +                 2 parlay::scheduler<parlay::WorkStealingJob>::steal_job<parlay::scheduler<parlay::WorkStealingJob>::worker()::'lambda'()>(parlay::scheduler<parlay::WorkStealingJob>::worker()::'lambda'()&&, bool)  (in simple_par_prog) + 140  [0x1007482cc]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:258
+    +                   1 parlay::scheduler<parlay::WorkStealingJob>::try_steal(unsigned long)  (in simple_par_prog) + 120  [0x1007442e8]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:269
+    +                   | 1 std::vector<parlay::scheduler<parlay::WorkStealingJob>::attempt>::operator[][abi:v15006](unsigned long)  (in simple_par_prog) + 20  [0x1007444b0]  /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk/usr/include/c++/v1/vector:1457
+    +                   1 parlay::scheduler<parlay::WorkStealingJob>::try_steal(unsigned long)  (in simple_par_prog) + 152  [0x100744308]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:270
+    +                     1 parlay::internal::Deque<parlay::WorkStealingJob>::pop_top()  (in simple_par_prog) + 40  [0x1007444e8]  /Users/atharvsharma/Documents/parlaylib/include/parlay/internal/work_stealing_deque.h:71
+    +                       1 std::__atomic_base<parlay::internal::Deque<parlay::WorkStealingJob>::age_t, false>::load[abi:v15006](std::memory_order) const  (in simple_par_prog) + 40  [0x1007435b0]  /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk/usr/include/c++/v1/atomic:1560
+    1689 Thread_5187181
+    + 1689 thread_start  (in libsystem_pthread.dylib) + 8  [0x19447eb80]
+    +   1689 _pthread_start  (in libsystem_pthread.dylib) + 136  [0x194483c0c]
+    +     1689 std::__thread_proxy[abi:v15006]<std::tuple<std::unique_ptr<std::__thread_struct>, parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()>>(void*)  (in simple_par_prog) + 84  [0x100747388]  /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk/usr/include/c++/v1/thread:301
+    +       1689 std::__thread_execute[abi:v15006]<std::unique_ptr<std::__thread_struct>, parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()>(std::tuple<std::unique_ptr<std::__thread_struct>, parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()>&, std::__tuple_indices<>)  (in simple_par_prog) + 28  [0x1007479e0]  /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk/usr/include/c++/v1/thread:290
+    +         1689 decltype(std::declval<parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()>()()) std::__invoke[abi:v15006]<parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()>(parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()&&)  (in simple_par_prog) + 24  [0x100747a44]  /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk/usr/include/c++/v1/__functional/invoke.h:394
+    +           1689 parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()::operator()() const  (in simple_par_prog) + 68  [0x100747abc]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:121
+    +             1685 parlay::scheduler<parlay::WorkStealingJob>::worker()  (in simple_par_prog) + 132  [0x100747b4c]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:206
+    +             ! 1685 parlay::scheduler<parlay::WorkStealingJob>::wait_for_work()  (in simple_par_prog) + 80  [0x100747bfc]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:299
+    +             !   1685 parlay::atomic_wait<unsigned long>(std::atomic<unsigned long> const*, parlay::type_identity<unsigned long>::type)  (in simple_par_prog) + 36  [0x100747d50]  /Users/atharvsharma/Documents/parlaylib/include/parlay/internal/atomic_wait.h:371
+    +             !     1685 void __cxx_atomic_wait<unsigned long>(unsigned long const*, unsigned long, int)  (in simple_par_prog) + 528  [0x100748058]  /Users/atharvsharma/Documents/parlaylib/include/parlay/internal/atomic_wait.h:351
+    +             !       1685 void __cxx_atomic_try_wait_slow<unsigned long>(unsigned long const volatile*, unsigned long, int)  (in simple_par_prog) + 228  [0x10074814c]  /Users/atharvsharma/Documents/parlaylib/include/parlay/internal/atomic_wait.h:251
+    +             !         1685 _pthread_cond_wait  (in libsystem_pthread.dylib) + 984  [0x1944840e0]
+    +             !           1685 __psynch_cvwait  (in libsystem_kernel.dylib) + 8  [0x1944453cc]
+    +             4 parlay::scheduler<parlay::WorkStealingJob>::worker()  (in simple_par_prog) + 72  [0x100747b10]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:200
+    +               4 parlay::scheduler<parlay::WorkStealingJob>::get_job<parlay::scheduler<parlay::WorkStealingJob>::worker()::'lambda'()>(parlay::scheduler<parlay::WorkStealingJob>::worker()::'lambda'()&&, bool)  (in simple_par_prog) + 128  [0x100747cd4]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:241
+    +                 2 parlay::scheduler<parlay::WorkStealingJob>::steal_job<parlay::scheduler<parlay::WorkStealingJob>::worker()::'lambda'()>(parlay::scheduler<parlay::WorkStealingJob>::worker()::'lambda'()&&, bool)  (in simple_par_prog) + 140  [0x1007482cc]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:258
+    +                 : 1 parlay::scheduler<parlay::WorkStealingJob>::try_steal(unsigned long)  (in simple_par_prog) + 120  [0x1007442e8]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:269
+    +                 : | 1 std::vector<parlay::scheduler<parlay::WorkStealingJob>::attempt>::operator[][abi:v15006](unsigned long)  (in simple_par_prog) + 20  [0x1007444b0]  /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk/usr/include/c++/v1/vector:1457
+    +                 : 1 parlay::scheduler<parlay::WorkStealingJob>::try_steal(unsigned long)  (in simple_par_prog) + 152  [0x100744308]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:270
+    +                 :   1 DYLD-STUB$$parlay::internal::Deque<parlay::WorkStealingJob>::pop_top()  (in simple_par_prog) + 8  [0x10074b0ec]
+    +                 2 parlay::scheduler<parlay::WorkStealingJob>::steal_job<parlay::scheduler<parlay::WorkStealingJob>::worker()::'lambda'()>(parlay::scheduler<parlay::WorkStealingJob>::worker()::'lambda'()&&, bool)  (in simple_par_prog) + 244  [0x100748334]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:261
+    +                   2 std::this_thread::sleep_for(std::chrono::duration<long long, std::ratio<1l, 1000000000l>> const&)  (in libc++.1.dylib) + 84  [0x1943b5f38]
+    +                     2 nanosleep  (in libsystem_c.dylib) + 220  [0x1943216f4]
+    +                       2 __semwait_signal  (in libsystem_kernel.dylib) + 8  [0x1944451c8]
+    1689 Thread_5187182
+      1689 thread_start  (in libsystem_pthread.dylib) + 8  [0x19447eb80]
+        1689 _pthread_start  (in libsystem_pthread.dylib) + 136  [0x194483c0c]
+          1689 std::__thread_proxy[abi:v15006]<std::tuple<std::unique_ptr<std::__thread_struct>, parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()>>(void*)  (in simple_par_prog) + 84  [0x100747388]  /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk/usr/include/c++/v1/thread:301
+            1689 std::__thread_execute[abi:v15006]<std::unique_ptr<std::__thread_struct>, parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()>(std::tuple<std::unique_ptr<std::__thread_struct>, parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()>&, std::__tuple_indices<>)  (in simple_par_prog) + 28  [0x1007479e0]  /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk/usr/include/c++/v1/thread:290
+              1689 decltype(std::declval<parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()>()()) std::__invoke[abi:v15006]<parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()>(parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()&&)  (in simple_par_prog) + 24  [0x100747a44]  /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk/usr/include/c++/v1/__functional/invoke.h:394
+                1689 parlay::scheduler<parlay::WorkStealingJob>::scheduler(unsigned long)::'lambda'()::operator()() const  (in simple_par_prog) + 68  [0x100747abc]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:121
+                  1689 parlay::scheduler<parlay::WorkStealingJob>::worker()  (in simple_par_prog) + 28  [0x100747ae4]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:197
+                    1689 parlay::scheduler<parlay::WorkStealingJob>::wait_for_work()  (in simple_par_prog) + 80  [0x100747bfc]  /Users/atharvsharma/Documents/parlaylib/include/parlay/scheduler.h:299
+                      1689 parlay::atomic_wait<unsigned long>(std::atomic<unsigned long> const*, parlay::type_identity<unsigned long>::type)  (in simple_par_prog) + 36  [0x100747d50]  /Users/atharvsharma/Documents/parlaylib/include/parlay/internal/atomic_wait.h:371
+                        1689 void __cxx_atomic_wait<unsigned long>(unsigned long const*, unsigned long, int)  (in simple_par_prog) + 528  [0x100748058]  /Users/atharvsharma/Documents/parlaylib/include/parlay/internal/atomic_wait.h:351
+                          1689 void __cxx_atomic_try_wait_slow<unsigned long>(unsigned long const volatile*, unsigned long, int)  (in simple_par_prog) + 228  [0x10074814c]  /Users/atharvsharma/Documents/parlaylib/include/parlay/internal/atomic_wait.h:251
+                            1689 _pthread_cond_wait  (in libsystem_pthread.dylib) + 984  [0x1944840e0]
+                              1689 __psynch_cvwait  (in libsystem_kernel.dylib) + 8  [0x1944453cc]
+
+Total number in stack (recursive counted multiple, when >=5):
+
+Sort by top of stack, same collapsed (when >= 5):
+        __psynch_cvwait  (in libsystem_kernel.dylib)        5059
+        main::$_1::operator()() const  (in simple_par_prog)        1689
+        _dyld_start  (in dyld)        182
+        mach_msg2_trap  (in dyld)        7
+
+Binary images description not available
+

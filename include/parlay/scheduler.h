@@ -43,6 +43,31 @@
 #define PARLAY_ELASTIC_STEAL_TIMEOUT 10000
 #endif
 
+#ifndef MEASURE_AVERAGE_STEAL_TIME
+#define MEASURE_AVERAGE_STEAL_TIME false
+#endif
+
+// True if every worker should record a trace of its state transitions
+// (W = working, S = stealing, A = asleep, D = done). The traces are written
+// to files when the scheduler is destroyed. The file prefix is taken from the
+// environment variable PARLAY_TRACE_FILE (default: "parlay_trace").
+//
+// Default: false
+#ifndef PARLAY_TRACE_STATES
+#define PARLAY_TRACE_STATES false
+#endif
+
+#ifndef PARLAY_TRACE_SAMPLE_PERIOD_NS
+#define PARLAY_TRACE_SAMPLE_PERIOD_NS 400
+#endif
+
+#if PARLAY_TRACE_STATES
+#include <cstdio>
+#include <string>
+#define PARLAY_TRACE_STATE(s) set_state(s)
+#else
+#define PARLAY_TRACE_STATE(s) ((void)0)
+#endif
 
 #if PARLAY_ELASTIC_PARALLELISM
 #include "internal/atomic_wait.h"
@@ -109,10 +134,20 @@ struct scheduler {
         num_deques(num_threads),
         num_awake_workers(num_threads),
         parent_worker_info(std::exchange(worker_info, workerInfo{0, this})),
-        deques(num_deques),
+        deques(num_threads),
         attempts(num_deques),
         spawned_threads(),
-        finished_flag(false) {
+        finished_flag(false)
+#if PARLAY_TRACE_STATES
+        , traces(num_workers)
+#endif
+        {
+
+#if PARLAY_TRACE_STATES
+    trace_epoch = std::chrono::steady_clock::now();
+    for (auto& tr : traces) tr.events.reserve(1 << 20);
+    PARLAY_TRACE_STATE(state::work);  // worker 0 is the calling thread, running user code
+#endif
 
     // Spawn num_threads many threads on startup
     for (worker_id_type i = 1; i < num_threads; ++i) {
@@ -125,6 +160,9 @@ struct scheduler {
 
   ~scheduler() {
     shutdown();
+#if PARLAY_TRACE_STATES
+    write_traces();
+#endif
     worker_info = std::move(parent_worker_info);
   }
 
@@ -156,6 +194,8 @@ struct scheduler {
     else {
       do_work_until(std::forward<F>(done));
     }
+    // Control returns to the user code that is waiting
+    PARLAY_TRACE_STATE(state::work);
   }
 
   // Pop from local stack.
@@ -171,6 +211,53 @@ struct scheduler {
     return finished_flag.load(std::memory_order_acquire);
   }
 
+  // Making the deques public for testing out the scheduler
+  std::vector<internal::Deque<Job>> deques;
+  std::atomic<size_t> num_stealers{0};
+#if MEASURE_AVERAGE_STEAL_TIME
+  std::atomic<std::int64_t> total_steal_time{0};
+  std::atomic<long long> num_steal_attempts{0};
+#endif
+
+#if PARLAY_TRACE_STATES
+  // Each event means "from time t_ns onwards, this worker is in state s".
+  enum class state : char { work = 'W', steal = 'S', asleep = 'A', done = 'D' };
+
+  struct trace_event {
+    std::int64_t t_ns;
+    state s;
+  };
+
+  // Align to avoid false sharing.
+  struct alignas(128) worker_trace {
+    char current = 0;
+    std::vector<trace_event> events;
+  };
+
+  // Convert the event traces into one row per worker, with one character
+  // per period_ns giving the state that the worker was in at that time.
+  static std::vector<std::string> sample_states(const std::vector<worker_trace>& traces,
+                                                std::int64_t end_ns,
+                                                std::int64_t period_ns = PARLAY_TRACE_SAMPLE_PERIOD_NS) {
+    const size_t slots = static_cast<size_t>(end_ns / period_ns) + 1;
+    std::vector<std::string> out;
+    out.reserve(traces.size());
+    for (const auto& tr : traces) {
+      std::string row(slots, '.');
+      size_t e = 0;
+      char cur = '.';
+      for (size_t k = 0; k < slots; ++k) {
+        const std::int64_t t = static_cast<std::int64_t>(k) * period_ns;
+        while (e < tr.events.size() && tr.events[e].t_ns <= t)
+          cur = static_cast<char>(tr.events[e++].s);
+        row[k] = cur;
+      }
+      out.push_back(std::move(row));
+    }
+    return out;
+  }
+#endif
+
  private:
   // Align to avoid false sharing.
   struct alignas(128) attempt {
@@ -180,13 +267,55 @@ struct scheduler {
   int num_deques;
   std::atomic<size_t> num_awake_workers;
   workerInfo parent_worker_info;
-  std::vector<internal::Deque<Job>> deques;
   std::vector<attempt> attempts;
   std::vector<std::thread> spawned_threads;
   std::atomic<int> finished_flag;
 
   std::atomic<size_t> wake_up_counter{0};
   std::atomic<size_t> num_finished_workers{0};
+
+#if PARLAY_TRACE_STATES
+  std::vector<worker_trace> traces;
+  std::chrono::steady_clock::time_point trace_epoch;
+
+  std::int64_t ns_now() const {
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now() - trace_epoch).count();
+  }
+
+  // Record that the current worker has entered state s
+  void set_state(state s) {
+    auto& tr = traces[worker_id()];
+    if (tr.current == static_cast<char>(s)) return;
+    tr.current = static_cast<char>(s);
+    tr.events.push_back({ns_now(), s});
+  }
+
+  // Must only be called once all workers have been joined
+  void write_traces() {
+    static std::atomic<int> instance_counter{0};
+    const std::int64_t end_ns = ns_now();
+    const char* env_prefix = std::getenv("PARLAY_TRACE_FILE");
+    const std::string prefix = env_prefix ? env_prefix : "parlay_trace";
+    const std::string base = prefix + "_" + std::to_string(instance_counter.fetch_add(1));
+
+    if (FILE* f = std::fopen((base + ".events.txt").c_str(), "w")) {
+      std::fprintf(f, "worker t_ns state\n");
+      for (size_t w = 0; w < traces.size(); ++w)
+        for (const auto& ev : traces[w].events)
+          std::fprintf(f, "%zu %lld %c\n", w, static_cast<long long>(ev.t_ns), static_cast<char>(ev.s));
+      std::fclose(f);
+    }
+
+    if (FILE* f = std::fopen((base + ".grid.txt").c_str(), "w")) {
+      for (const auto& row : sample_states(traces, end_ns)) {
+        std::fwrite(row.data(), 1, row.size(), f);
+        std::fputc('\n', f);
+      }
+      std::fclose(f);
+    }
+  }
+#endif
 
   // Start an individual worker task, stealing work if no local
   // work is available. May go to sleep if no work is available
@@ -198,7 +327,10 @@ struct scheduler {
 #endif
     while (!finished()) {
       Job* job = get_job([&]() { return finished(); }, PARLAY_ELASTIC_PARALLELISM);
-      if (job)(*job)();
+      if (job) {
+        PARLAY_TRACE_STATE(state::work);
+        (*job)();
+      }
 #if PARLAY_ELASTIC_PARALLELISM
       else if (!finished()) {
         // If no job was stolen, the worker should go to
@@ -208,6 +340,7 @@ struct scheduler {
 #endif
     }
     assert(finished());
+    PARLAY_TRACE_STATE(state::done);
     num_finished_workers.fetch_add(1);
   }
 
@@ -223,6 +356,7 @@ struct scheduler {
     while (true) {
       Job* job = get_job(done, false);  // timeout MUST BE false
       if (!job) return;
+      PARLAY_TRACE_STATE(state::work);
       (*job)();
     }
     assert(done());
@@ -250,16 +384,34 @@ struct scheduler {
   template<typename F>
   Job* steal_job(F&& break_early, bool timeout) {
     size_t id = worker_id();
+    num_stealers.fetch_add(1);
+    PARLAY_TRACE_STATE(state::steal);
     const auto start_time = std::chrono::steady_clock::now();
     do {
       // By coupon collector's problem, this should touch all.
       for (size_t i = 0; i <= YIELD_FACTOR * num_deques; i++) {
-        if (break_early()) return nullptr;
+        if (break_early()) {
+          num_stealers.fetch_sub(1);
+          return nullptr;
+        }
+      #if MEASURE_AVERAGE_STEAL_TIME
+        auto start = std::chrono::steady_clock::now();
+      #endif
         Job* job = try_steal(id);
-        if (job) return job;
+      #if MEASURE_AVERAGE_STEAL_TIME
+        auto end = std::chrono::steady_clock::now();
+        total_steal_time.fetch_add(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count());
+        num_steal_attempts.fetch_add(1);
+      #endif
+        if (job) {
+          num_stealers.fetch_sub(1);
+          return job;
+        }
       }
       std::this_thread::sleep_for(std::chrono::nanoseconds(num_deques * 100));
     } while (!timeout || std::chrono::steady_clock::now() - start_time < STEAL_TIMEOUT);
+    num_stealers.fetch_sub(1);
     return nullptr;
   }
 
@@ -296,6 +448,7 @@ struct scheduler {
   // Wait until notified to wake up
   void wait_for_work() {
     num_awake_workers.fetch_sub(1);
+    PARLAY_TRACE_STATE(state::asleep);
     parlay::atomic_wait(&wake_up_counter, wake_up_counter.load());
     num_awake_workers.fetch_add(1);
   }
