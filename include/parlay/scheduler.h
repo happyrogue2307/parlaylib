@@ -73,6 +73,9 @@
 #include "internal/atomic_wait.h"
 #endif
 
+extern int curr_n;
+extern int instance_counter;
+
 namespace parlay {
 
 
@@ -293,11 +296,10 @@ struct scheduler {
 
   // Must only be called once all workers have been joined
   void write_traces() {
-    static std::atomic<int> instance_counter{0};
     const std::int64_t end_ns = ns_now();
     const char* env_prefix = std::getenv("PARLAY_TRACE_FILE");
     const std::string prefix = env_prefix ? env_prefix : "parlay_trace";
-    const std::string base = prefix + "_" + std::to_string(instance_counter.fetch_add(1));
+    const std::string base = prefix + "_" + std::to_string(curr_n) + "_" + std::to_string(instance_counter++);
 
     if (FILE* f = std::fopen((base + ".events.txt").c_str(), "w")) {
       std::fprintf(f, "worker t_ns state\n");
