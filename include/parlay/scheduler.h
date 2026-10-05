@@ -263,7 +263,7 @@ struct scheduler {
 
  private:
   // Align to avoid false sharing.
-  struct alignas(128) attempt {
+  struct alignas(64) attempt {
     size_t val;
   };
 

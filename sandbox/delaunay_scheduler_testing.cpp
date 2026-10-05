@@ -15,7 +15,7 @@ int curr_n = 1;
 int instance_counter = 1;
 
 int main(int argc, char* argv[]) {
-    for(point_id n=100; n <= 1E4; n*=10){
+    for(point_id n=100; n <= 1E4; n*=10) {
         parlay::random_generator gen(0);
         std::uniform_real_distribution<real> dis(0.0,1.0);
 
