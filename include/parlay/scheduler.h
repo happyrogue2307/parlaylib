@@ -54,7 +54,7 @@
 //
 // Default: false
 #ifndef PARLAY_TRACE_STATES
-#define PARLAY_TRACE_STATES false
+#define PARLAY_TRACE_STATES true 
 #endif
 
 #ifndef PARLAY_TRACE_SAMPLE_PERIOD_NS
@@ -143,6 +143,7 @@ struct scheduler {
         finished_flag(false)
 #if PARLAY_TRACE_STATES
         , traces(num_workers)
+        , ready_tasks(num_workers);
 #endif
         {
 
@@ -228,13 +229,17 @@ struct scheduler {
 
   struct trace_event {
     std::int64_t t_ns;
-    state s;
+    state s; 
   };
 
   // Align to avoid false sharing.
-  struct alignas(128) worker_trace {
+  struct alignas(64) worker_trace {
     char current = 0;
     std::vector<trace_event> events;
+  };
+
+  struct alignas(64) ready_task_trace {
+    std::vector<pair<std::int64_t, char> > ready_vec;
   };
 
   // Convert the event traces into one row per worker, with one character
@@ -280,6 +285,7 @@ struct scheduler {
 #if PARLAY_TRACE_STATES
   std::vector<worker_trace> traces;
   std::chrono::steady_clock::time_point trace_epoch;
+  std::vector<ready_task_trace> ready_tasks;
 
   std::int64_t ns_now() const {
     return std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -294,6 +300,9 @@ struct scheduler {
     tr.events.push_back({ns_now(), s});
   }
 
+  void modify_ready_task(char task) {
+    ready_tasks[worker_id()].push_back(make_pair(ns_now(), task));
+  }
   // Must only be called once all workers have been joined
   void write_traces() {
     const std::int64_t end_ns = ns_now();
@@ -492,9 +501,12 @@ class fork_join_scheduler {
   template <typename L, typename R>
   static void pardo(scheduler_t& scheduler, L&& left, R&& right, bool conservative = false) {
     auto execute_right = [&]() { std::forward<R>(right)(); };
-    auto right_job = make_job(right);
-    scheduler.spawn(&right_job);
-    std::forward<L>(left)();
+    auto right_job = make_job(right); 
+    #if PARLAY_TRACE_STATES
+      ready_tasks[worker_id].push_back(make_pair(ns_now(), '+'));
+    #endif
+    scheduler.spawn(&right_job); 
+    std::forward<L>(left)(); 
     if (const Job* job = scheduler.get_own_job(); job != nullptr) {
       assert(job == &right_job);
       execute_right();
@@ -551,8 +563,38 @@ class fork_join_scheduler {
     }
   }
 
-};
+#if PARLAY_TRACE_STATES
+template <typename L, typename R>
+  static void pardo_jc(scheduler_t& scheduler, L&& left, R&& right, bool conservative = false, std::atomic<short>& join_counter) {
+    auto execute_right = [&]() { 
+      modify_ready_tasks('-');
+      std::forward<R>(right)();
+      int jc_val = join_counter.load(); 
+      join_counter.fetch_add(-1); 
+      if(jc_val == 0) modify_ready_tasks('+');};
 
+    auto right_job = make_job(right);  
+    scheduler.spawn(&right_job); 
+    modify_ready_tasks('+');
+    std::forward<L>(left)(); 
+    int jc_val = join_counter.load();
+    join_counter.fetch_add(-1);
+    if(jc_val == 1) {
+      modify_ready_tasks('+');
+    }
+    if (const Job* job = scheduler.get_own_job(); job != nullptr) {
+      assert(job == &right_job);
+      execute_right();
+    }
+    else {
+      auto done = [&]() {return right_job.finished();};
+      scheduler.wait_until(done, conservative);
+      assert(right_job.finished());
+    }
+    modify_ready_tasks('-');
+  }
+#endif
+  };
 }  // namespace parlay
 
 #endif  // PARLAY_SCHEDULER_H_

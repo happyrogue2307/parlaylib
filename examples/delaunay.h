@@ -104,9 +104,15 @@ struct Delaunay {
         auto tt = *edges.remove(key);
         process_edge(tp, e, tt);};
       auto ta1 = t1; auto tb1 = t1;
-      parlay::par_do3([&] {check_edge(edge{p, e[0]}, ta1);},
+      #if PARLAY_TRACE_STATES
+        parlay::par_do3_jc([&] {check_edge(edge{p, e[0]}, ta1);},
                       [&] {check_edge(edge{e[1], p}, tb1);},
                       [&] {process_edge(t1, e, t2);});
+      #else
+        parlay::par_do3([&] {check_edge(edge{p, e[0]}, ta1);},
+                      [&] {check_edge(edge{e[1], p}, tb1);},
+                      [&] {process_edge(t1, e, t2);});
+      #endif
     }
   }
 
@@ -131,9 +137,15 @@ struct Delaunay {
     std::shared_ptr<triangle> te2, te3, t2, t3;
     t2 = t3 = t;
     te2 = te3 = te;
-    parlay::par_do3([&] {process_edge(t2, edge{p0.id,p1.id}, te2);},
+    #if PARLAY_TRACE_STATES
+      parlay::par_do3_jc([&] {process_edge(t2, edge{p0.id,p1.id}, te2);},
                     [&] {process_edge(t3, edge{p1.id,p2.id}, te3);},
                     [&] {process_edge(t, edge{p2.id,p0.id}, te);});
+    #else 
+      parlay::par_do3([&] {process_edge(t2, edge{p0.id,p1.id}, te2);},
+                    [&] {process_edge(t3, edge{p1.id,p2.id}, te3);},
+                    [&] {process_edge(t, edge{p2.id,p0.id}, te);});
+    #endif
   }
 };
 

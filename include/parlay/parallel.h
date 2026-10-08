@@ -211,6 +211,22 @@ inline void par_do(Lf&& left, Rf&& right, bool conservative) {
   return fork_join_scheduler::pardo(internal::get_current_scheduler(), std::forward<Lf>(left), std::forward<Rf>(right), conservative);
 }
 
+#if PARLAY_TRACE_STATES
+template <typename Lf, typename Rf>
+inline void par_do_jc(Lf&& left, Rf&& right, bool conservative) {
+  static_assert(std::is_invocable_v<Lf&&>);
+  static_assert(std::is_invocable_v<Rf&&>);
+  std::atomic<int> join_counter{2};
+  return fork_join_scheduler::pardo_jc(internal::get_current_scheduler(), std::forward<Lf>(left), std::forward<Rf>(right), conservative, join_counter);
+}
+
+template <typename Lf, typename Mf, typename Rf>
+inline void par_do3_jc(Lf&& left, Mf&& mid, Rf&& right) {
+  auto left_mid = [&]() { par_do_jc(std::forward<Lf>(left), std::forward<Mf>(mid)); };
+  par_do_jc(left_mid, std::forward<Rf>(right));
+}
+#endif
+
 // Execute the given function f() on p threads inside its own private scheduler instance
 //
 // The scheduler instance is destroyed upon completion and can not be re-used. Creating a
