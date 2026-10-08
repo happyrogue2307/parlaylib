@@ -143,7 +143,7 @@ struct scheduler {
         finished_flag(false)
 #if PARLAY_TRACE_STATES
         , traces(num_workers)
-        , ready_tasks(num_workers);
+        , ready_tasks(num_workers)
 #endif
         {
 
@@ -239,7 +239,7 @@ struct scheduler {
   };
 
   struct alignas(64) ready_task_trace {
-    std::vector<pair<std::int64_t, char> > ready_vec;
+    std::vector<std::pair<std::int64_t, char> > ready_vec;
   };
 
   // Convert the event traces into one row per worker, with one character
@@ -263,6 +263,10 @@ struct scheduler {
       out.push_back(std::move(row));
     }
     return out;
+  }
+
+  void modify_ready_tasks(char task) {
+    ready_tasks[worker_id()].ready_vec.push_back(std::make_pair(ns_now(), task));
   }
 #endif
 
@@ -298,11 +302,8 @@ struct scheduler {
     if (tr.current == static_cast<char>(s)) return;
     tr.current = static_cast<char>(s);
     tr.events.push_back({ns_now(), s});
-  }
+  } 
 
-  void modify_ready_task(char task) {
-    ready_tasks[worker_id()].push_back(make_pair(ns_now(), task));
-  }
   // Must only be called once all workers have been joined
   void write_traces() {
     const std::int64_t end_ns = ns_now();
@@ -501,10 +502,7 @@ class fork_join_scheduler {
   template <typename L, typename R>
   static void pardo(scheduler_t& scheduler, L&& left, R&& right, bool conservative = false) {
     auto execute_right = [&]() { std::forward<R>(right)(); };
-    auto right_job = make_job(right); 
-    #if PARLAY_TRACE_STATES
-      ready_tasks[worker_id].push_back(make_pair(ns_now(), '+'));
-    #endif
+    auto right_job = make_job(right);  
     scheduler.spawn(&right_job); 
     std::forward<L>(left)(); 
     if (const Job* job = scheduler.get_own_job(); job != nullptr) {
@@ -528,6 +526,38 @@ class fork_join_scheduler {
     }
     parfor_(scheduler, start, end, f, granularity, conservative);
   }
+
+#if PARLAY_TRACE_STATES
+  template <typename L, typename R>
+  static void pardo_jc(scheduler_t& scheduler, L&& left, R&& right, std::atomic<short>& join_counter, bool conservative = false) {
+    auto execute_right = [&]() { 
+      scheduler.modify_ready_tasks('-');
+      std::forward<R>(right)();
+      int jc_val = join_counter.load(); 
+      join_counter.fetch_add(-1); 
+      if(jc_val == 0) scheduler.modify_ready_tasks('+');};
+
+    auto right_job = make_job(right);  
+    scheduler.spawn(&right_job); 
+    scheduler.modify_ready_tasks('+');
+    std::forward<L>(left)(); 
+    int jc_val = join_counter.load();
+    join_counter.fetch_add(-1);
+    if(jc_val == 1) {
+      scheduler.modify_ready_tasks('+');
+    }
+    if (const Job* job = scheduler.get_own_job(); job != nullptr) {
+      assert(job == &right_job);
+      execute_right();
+    }
+    else {
+      auto done = [&]() {return right_job.finished();};
+      scheduler.wait_until(done, conservative);
+      assert(right_job.finished());
+    }
+    scheduler.modify_ready_tasks('-');
+  }
+#endif
 
  private:
   template <typename F>
@@ -563,37 +593,6 @@ class fork_join_scheduler {
     }
   }
 
-#if PARLAY_TRACE_STATES
-template <typename L, typename R>
-  static void pardo_jc(scheduler_t& scheduler, L&& left, R&& right, bool conservative = false, std::atomic<short>& join_counter) {
-    auto execute_right = [&]() { 
-      modify_ready_tasks('-');
-      std::forward<R>(right)();
-      int jc_val = join_counter.load(); 
-      join_counter.fetch_add(-1); 
-      if(jc_val == 0) modify_ready_tasks('+');};
-
-    auto right_job = make_job(right);  
-    scheduler.spawn(&right_job); 
-    modify_ready_tasks('+');
-    std::forward<L>(left)(); 
-    int jc_val = join_counter.load();
-    join_counter.fetch_add(-1);
-    if(jc_val == 1) {
-      modify_ready_tasks('+');
-    }
-    if (const Job* job = scheduler.get_own_job(); job != nullptr) {
-      assert(job == &right_job);
-      execute_right();
-    }
-    else {
-      auto done = [&]() {return right_job.finished();};
-      scheduler.wait_until(done, conservative);
-      assert(right_job.finished());
-    }
-    modify_ready_tasks('-');
-  }
-#endif
   };
 }  // namespace parlay
 

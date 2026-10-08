@@ -213,11 +213,11 @@ inline void par_do(Lf&& left, Rf&& right, bool conservative) {
 
 #if PARLAY_TRACE_STATES
 template <typename Lf, typename Rf>
-inline void par_do_jc(Lf&& left, Rf&& right, bool conservative) {
+inline void par_do_jc(Lf&& left, Rf&& right, bool conservative=false) {
   static_assert(std::is_invocable_v<Lf&&>);
   static_assert(std::is_invocable_v<Rf&&>);
-  std::atomic<int> join_counter{2};
-  return fork_join_scheduler::pardo_jc(internal::get_current_scheduler(), std::forward<Lf>(left), std::forward<Rf>(right), conservative, join_counter);
+  std::atomic<short> join_counter{2};
+  return fork_join_scheduler::pardo_jc(internal::get_current_scheduler(), std::forward<Lf>(left), std::forward<Rf>(right), join_counter, conservative);
 }
 
 template <typename Lf, typename Mf, typename Rf>
