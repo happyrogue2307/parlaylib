@@ -20,10 +20,11 @@ int main(int argc, char* argv[]) {
         std::uniform_real_distribution<real> dis(0.0,1.0);
 
         // generate n random points in a unit square
-        auto points = parlay::tabulate(n, [&] (point_id i) -> point {
-          auto r = gen[i];
-          return point{i, dis(r), dis(r)};});
 
+        auto points = parlay::tabulate(n, [&] (point_id i) -> point {
+            auto r = gen[i];
+            return point{i, dis(r), dis(r)};});
+        
         parlay::sequence<tri> result;
         parlay::sequence<long long> average_non_greediness;
         
@@ -39,7 +40,7 @@ int main(int argc, char* argv[]) {
         curr_n = n;
         instance_counter = 1; 
         int num_threads = std::stoi(getenv("PARLAY_NUM_THREADS"));
-        parlay::execute_with_scheduler(num_threads, [&] {result = delaunay(points);});
+        parlay::execute_with_scheduler(num_threads, [&] { result = delaunay(points);});
         
         
     #if MEASURE_AVERAGE_STEAL_TIME

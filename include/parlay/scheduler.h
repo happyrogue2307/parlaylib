@@ -279,11 +279,11 @@ struct scheduler {
     std::sort(merged_array.begin(), merged_array.end());
     const size_t slots = static_cast<size_t>(end_ns/period_ns)  + 1;
     int curr = 0;
-    std::vector<int> out(slots);
+    std::vector<int> out;
     for(int k = 0; k * period_ns <= end_ns; k++) {
-      int num_ready_tasks = 0;
-      while(merged_array[curr].first <= k) {
-        num_ready_tasks += merged_array[curr].second == '+' ? 1 : -1;
+      int num_ready_tasks = out.size() == 0 ? 0 : out.back();
+      while(curr < merged_array.size() && merged_array[curr].first <= k*period_ns) {
+        num_ready_tasks += merged_array[curr++].second == '+' ? 1 : -1;
       } 
       out.push_back(num_ready_tasks);
     }
@@ -353,16 +353,15 @@ struct scheduler {
     }
 
     // Merge ready tasks using a sorted array merge
-    // Do a +Int or -Int for sum of all ready tasks in a 400 ms window
+    // Do a +Int or -Int for sum of all ready tasks in a 400 ns window
     // Write everything to base+grid.txt
     std::vector<int> ready_tasks_at_intervals = merge_and_sample_ready_tasks(ready_tasks, end_ns); 
 
     if(FILE* f = std::fopen((base + ".grid.txt").c_str(), "a")) {
-      for(const auto& val : ready_tasks_at_intervals) {
-        std::fwrite(&val, 1, 1, f);
-        std::fwrite(&" ", 1, 1, f);
-      }
-      std::fwrite(&"\n",1,1,f);
+      std::fputc('\n', f);
+      for (int val : ready_tasks_at_intervals) std::fprintf(f, "%d ", val);
+      std::fputc('\n', f);
+      std::fclose(f);
     }
   }
 #endif
@@ -571,29 +570,26 @@ class fork_join_scheduler {
     auto execute_right = [&]() { 
       scheduler.modify_ready_tasks('-');
       std::forward<R>(right)();
-      int jc_val = join_counter.load(); 
-      join_counter.fetch_add(-1); 
-      if(jc_val == 0) scheduler.modify_ready_tasks('+');};
+      if(join_counter.fetch_sub(1) == 1) scheduler.modify_ready_tasks('+');}; // thread doing right work makes join available
 
-    auto right_job = make_job(right);  
+    auto right_job = make_job(execute_right);  
+
     scheduler.spawn(&right_job); 
-    scheduler.modify_ready_tasks('+');
+    scheduler.modify_ready_tasks('+'); // Right job ready
     std::forward<L>(left)(); 
-    int jc_val = join_counter.load();
-    join_counter.fetch_add(-1);
-    if(jc_val == 1) {
-      scheduler.modify_ready_tasks('+');
+    if(join_counter.fetch_sub(1) == 1) {
+      scheduler.modify_ready_tasks('+'); // Left job makes join available 
     }
+    // Noone did right task, make own job available
     if (const Job* job = scheduler.get_own_job(); job != nullptr) {
       assert(job == &right_job);
       execute_right();
-    }
-    else {
-      auto done = [&]() {return right_job.finished();};
+    } else {
+      auto done = [&]() {return right_job.finished();}; 
       scheduler.wait_until(done, conservative);
       assert(right_job.finished());
     }
-    scheduler.modify_ready_tasks('-');
+    scheduler.modify_ready_tasks('-'); // Join processed
   }
 #endif
 
