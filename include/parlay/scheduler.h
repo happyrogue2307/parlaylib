@@ -269,23 +269,23 @@ struct scheduler {
                                                         std::int64_t end_ns,
                                                         std::int64_t period_ns = PARLAY_TRACE_SAMPLE_PERIOD_NS) {
     int merge_array_size = 0; 
-    std::vector<std::pair<int, char> > merged_array;
+    std::vector<std::pair<int64_t, char> > merged_array;
     for(int i = 0; i < ready_tasks.size(); i++) {
-      auto ready_vec = ready_tasks[i].ready_vec;
+      const std::vector<std::pair<int64_t,char> >& ready_vec = ready_tasks[i].ready_vec;
       for(int j = 0; j < ready_vec.size(); j++) {
         merged_array.push_back(ready_vec[j]);
       }
     }
     std::sort(merged_array.begin(), merged_array.end());
     const size_t slots = static_cast<size_t>(end_ns/period_ns)  + 1;
-    int curr = 0, i = 0;
+    int curr = 0;
     std::vector<int> out(slots);
     for(int k = 0; k * period_ns <= end_ns; k++) {
-      int num_ready_tasks = i == 0 ? 0 : out[i-1];
+      int num_ready_tasks = 0;
       while(merged_array[curr].first <= k) {
         num_ready_tasks += merged_array[curr].second == '+' ? 1 : -1;
       } 
-      out[i++] = num_ready_tasks;
+      out.push_back(num_ready_tasks);
     }
     return out;
   }
