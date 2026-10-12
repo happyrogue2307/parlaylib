@@ -165,7 +165,7 @@ struct scheduler {
   ~scheduler() {
     shutdown();
 #if PARLAY_TRACE_STATES
-    write_traces();
+    write_traces_and_ready_tasks();
 #endif
     worker_info = std::move(parent_worker_info);
   }
@@ -265,6 +265,31 @@ struct scheduler {
     return out;
   }
 
+  static std::vector<int> merge_and_sample_ready_tasks(const std::vector<ready_task_trace>& ready_tasks,
+                                                        std::int64_t end_ns,
+                                                        std::int64_t period_ns = PARLAY_TRACE_SAMPLE_PERIOD_NS) {
+    int merge_array_size = 0; 
+    std::vector<std::pair<int, char> > merged_array;
+    for(int i = 0; i < ready_tasks.size(); i++) {
+      auto ready_vec = ready_tasks[i].ready_vec;
+      for(int j = 0; j < ready_vec.size(); j++) {
+        merged_array.push_back(ready_vec[j]);
+      }
+    }
+    std::sort(merged_array.begin(), merged_array.end());
+    const size_t slots = static_cast<size_t>(end_ns/period_ns)  + 1;
+    int curr = 0, i = 0;
+    std::vector<int> out(slots);
+    for(int k = 0; k * period_ns <= end_ns; k++) {
+      int num_ready_tasks = i == 0 ? 0 : out[i-1];
+      while(merged_array[curr].first <= k) {
+        num_ready_tasks += merged_array[curr].second == '+' ? 1 : -1;
+      } 
+      out[i++] = num_ready_tasks;
+    }
+    return out;
+  }
+
   void modify_ready_tasks(char task) {
     ready_tasks[worker_id()].ready_vec.push_back(std::make_pair(ns_now(), task));
   }
@@ -305,7 +330,7 @@ struct scheduler {
   } 
 
   // Must only be called once all workers have been joined
-  void write_traces() {
+  void write_traces_and_ready_tasks() {
     const std::int64_t end_ns = ns_now();
     const char* env_prefix = std::getenv("PARLAY_TRACE_FILE");
     const std::string prefix = env_prefix ? env_prefix : "parlay_trace";
@@ -325,6 +350,19 @@ struct scheduler {
         std::fputc('\n', f);
       }
       std::fclose(f);
+    }
+
+    // Merge ready tasks using a sorted array merge
+    // Do a +Int or -Int for sum of all ready tasks in a 400 ms window
+    // Write everything to base+grid.txt
+    std::vector<int> ready_tasks_at_intervals = merge_and_sample_ready_tasks(ready_tasks, end_ns); 
+
+    if(FILE* f = std::fopen((base + ".grid.txt").c_str(), "a")) {
+      for(const auto& val : ready_tasks_at_intervals) {
+        std::fwrite(&val, 1, 1, f);
+        std::fwrite(&" ", 1, 1, f);
+      }
+      std::fwrite(&"\n",1,1,f);
     }
   }
 #endif
