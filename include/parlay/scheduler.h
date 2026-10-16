@@ -48,9 +48,10 @@
 #endif
 
 // True if every worker should record a trace of its state transitions
-// (W = working, S = stealing, A = asleep, D = done). The traces are written
-// to files when the scheduler is destroyed. The file prefix is taken from the
-// environment variable PARLAY_TRACE_FILE (default: "parlay_trace").
+// (W = working, S = stealing, A = asleep, D = done). When the scheduler is
+// destroyed and parlay::trace_base is non-empty, a non-greediness summary is
+// stored in parlay::last_trace_summary, and if parlay::trace_write_files is
+// set, the traces are also written to files prefixed by parlay::trace_base.
 //
 // Default: false
 #ifndef PARLAY_TRACE_STATES
@@ -73,10 +74,30 @@
 #include "internal/atomic_wait.h"
 #endif
 
-extern int curr_n;
-extern int instance_counter;
-
 namespace parlay {
+
+#if PARLAY_TRACE_STATES
+// Path prefix (without extension) for the trace of the next scheduler to be
+// destroyed. A scheduler destroyed while this is empty records nothing, so the
+// caller controls exactly which schedulers are measured.
+inline std::string trace_base;
+
+// If true, also write <trace_base>.events.txt and <trace_base>.grid.txt.
+inline bool trace_write_files = false;
+
+// Non-greediness of the most recently traced scheduler, sampled on the
+// PARLAY_TRACE_SAMPLE_PERIOD_NS grid. For each column, S = #workers in 'S':
+//   steal_while_ready = sum of S * [ready tasks > 0]
+//   min_steal_ready   = sum of min(S, ready tasks)
+struct trace_summary_t {
+  size_t workers = 0;
+  size_t columns = 0;
+  std::int64_t elapsed_ns = 0;
+  long long steal_while_ready = 0;
+  long long min_steal_ready = 0;
+};
+inline trace_summary_t last_trace_summary;
+#endif
 
 
 template <typename Job>
@@ -329,12 +350,42 @@ struct scheduler {
     tr.events.push_back({ns_now(), s});
   } 
 
+  // Compute the non-greediness sums column by column, without materializing
+  // the per-worker state rows (which can be gigabytes for long runs).
+  trace_summary_t summarize(std::int64_t end_ns, const std::vector<int>& ready,
+                            std::int64_t period_ns = PARLAY_TRACE_SAMPLE_PERIOD_NS) const {
+    trace_summary_t summary;
+    summary.workers = traces.size();
+    summary.columns = ready.size();
+    summary.elapsed_ns = end_ns;
+    std::vector<size_t> next(traces.size(), 0);
+    std::vector<char> cur(traces.size(), '.');
+    for (size_t k = 0; k < ready.size(); ++k) {
+      const std::int64_t t = static_cast<std::int64_t>(k) * period_ns;
+      long long stealing = 0;
+      for (size_t w = 0; w < traces.size(); ++w) {
+        const auto& events = traces[w].events;
+        while (next[w] < events.size() && events[next[w]].t_ns <= t)
+          cur[w] = static_cast<char>(events[next[w]++].s);
+        stealing += (cur[w] == static_cast<char>(state::steal));
+      }
+      summary.steal_while_ready += stealing * (ready[k] > 0);
+      summary.min_steal_ready += std::min<long long>(stealing, ready[k]);
+    }
+    return summary;
+  }
+
   // Must only be called once all workers have been joined
   void write_traces_and_ready_tasks() {
     const std::int64_t end_ns = ns_now();
-    const char* env_prefix = std::getenv("PARLAY_TRACE_FILE");
-    const std::string prefix = env_prefix ? env_prefix : "parlay_trace";
-    const std::string base = prefix + "_" + std::to_string(curr_n) + "_" + std::to_string(instance_counter++);
+    if (trace_base.empty()) return;
+    const std::string& base = trace_base;
+
+    // Merge ready tasks using a sorted array merge
+    // Do a +Int or -Int for sum of all ready tasks in a 400 ns window
+    std::vector<int> ready_tasks_at_intervals = merge_and_sample_ready_tasks(ready_tasks, end_ns);
+    last_trace_summary = summarize(end_ns, ready_tasks_at_intervals);
+    if (!trace_write_files) return;
 
     if (FILE* f = std::fopen((base + ".events.txt").c_str(), "w")) {
       std::fprintf(f, "worker t_ns state\n");
@@ -352,11 +403,7 @@ struct scheduler {
       std::fclose(f);
     }
 
-    // Merge ready tasks using a sorted array merge
-    // Do a +Int or -Int for sum of all ready tasks in a 400 ns window
-    // Write everything to base+grid.txt
-    std::vector<int> ready_tasks_at_intervals = merge_and_sample_ready_tasks(ready_tasks, end_ns); 
-
+    // Append the ready task counts to base+grid.txt
     if(FILE* f = std::fopen((base + ".grid.txt").c_str(), "a")) {
       std::fputc('\n', f);
       for (int val : ready_tasks_at_intervals) std::fprintf(f, "%d ", val);

@@ -1,5 +1,0 @@
-file                                 workers   columns  S*[ready>0]  min(S,ready)
-parlay_trace_10000_1.grid.txt              4      1584           55            52
-parlay_trace_10000_2.grid.txt              4     16168            0             0
-parlay_trace_1000_1.grid.txt               4      1110           15            15
-parlay_trace_100_1.grid.txt                4       790            0             0

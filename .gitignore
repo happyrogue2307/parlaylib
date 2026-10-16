@@ -38,3 +38,10 @@ CMakeSettings.json
 *.exe
 *.out
 *.app
+
+# Python virtual environment for the sandbox scripts
+sandbox/.venv/
+
+# Benchmark results stay on the machine that produced them: runs.csv,
+# summary.csv, non_greediness.txt, plots/ and the --grid traces in raw/
+sandbox/trace_results/
